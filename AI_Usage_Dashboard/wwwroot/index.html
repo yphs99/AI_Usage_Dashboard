@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Usage Dashboard</title>
+<script>
+// When opened as file://, API calls become cross-origin and fail in browser.
+// Redirect to backend-hosted URL so frontend and API stay same-origin.
+if (window.location.protocol === 'file:') {
+  window.location.replace('http://localhost:5088/');
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+body { font-family: 'Inter', system-ui, sans-serif; }
+
+:root {
+  --bg:            #F7F8FA;
+  --sidebar-bg:    #FFFFFF;
+  --header-bg:     rgba(255,255,255,0.92);
+  --card-bg:       #FFFFFF;
+  --border:        #E8EAED;
+  --hover-bg:      #F3F4F6;
+  --accent:        oklch(0.55 0.18 250);
+  --accent-subtle: oklch(0.97 0.03 250);
+  --text-primary:  #111827;
+  --text-secondary:#374151;
+  --text-muted:    #9CA3AF;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg:     0 8px 24px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  --table-header:  #FAFBFC;
+  --table-stripe:  #FAFBFC;
+  --skeleton:      linear-gradient(90deg, #F0F1F3 25%, #E8EAED 50%, #F0F1F3 75%);
+  --code-bg:       #1E2130;
+  --code-text:     #CDD6F4;
+}
+
+[data-theme="dark"] {
+  --bg:            #0D0F17;
+  --sidebar-bg:    #111420;
+  --header-bg:     rgba(13,15,23,0.92);
+  --card-bg:       #161926;
+  --border:        #252840;
+  --hover-bg:      #1C2030;
+  --accent:        oklch(0.65 0.18 250);
+  --accent-subtle: oklch(0.2 0.06 250);
+  --text-primary:  #F0F2F8;
+  --text-secondary:#BCC3D8;
+  --text-muted:    #5A6280;
+  --shadow-sm:     0 1px 4px rgba(0,0,0,0.3);
+  --shadow-lg:     0 8px 32px rgba(0,0,0,0.5);
+  --table-header:  #131622;
+  --table-stripe:  #131622;
+  --skeleton:      linear-gradient(90deg, #1C2030 25%, #252840 50%, #1C2030 75%);
+  --code-bg:       #0D0F17;
+  --code-text:     #CDD6F4;
+}
+
+body { background: var(--bg); color: var(--text-primary); transition: background 0.2s, color 0.2s; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes spin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px oklch(from var(--accent) l c h / 0.15); }
+</style>
+</head>
+<body>
+
+<!-- Plain JS: i18n strings + API service layer (no Babel needed) -->
+<script src="i18n.js?v=20260429b"></script>
+<script src="api.js?v=20260429b"></script>
+
+<div id="root"></div>
+
+<!-- JSX components in dependency order -->
+<script type="text/babel" src="tweaks-panel.jsx?v=20260429b"></script>
+<script type="text/babel" src="charts.jsx?v=20260429b"></script>
+<script type="text/babel" src="layout.jsx?v=20260429b"></script>
+<script type="text/babel" src="overview.jsx?v=20260429b"></script>
+<script type="text/babel" src="usage-detail.jsx?v=20260429b"></script>
+<script type="text/babel" src="cost-report.jsx?v=20260429b"></script>
+<script type="text/babel" src="deprecated-models.jsx?v=20260429b"></script>
+<script type="text/babel" src="azure-page.jsx?v=20260429b"></script>
+<script type="text/babel" src="docs-page.jsx?v=20260429b"></script>
+
+<script type="text/babel">
+// Create LangContext ONCE and expose it globally so all component files can import it
+window.LangContext = React.createContext('zh');
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentHue": 250,
+  "darkMode": false,
+  "density": "comfortable",
+  "showSparklines": true
+}/*EDITMODE-END*/;
+
+function App() {
+  const [page, setPage]           = React.useState('overview');
+  const [theme, setTheme]         = React.useState('light');
+  // Default sidebar to collapsed on narrow viewports; otherwise expanded.
+  const [collapsed, setCollapsed] = React.useState(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches);
+
+  // Auto-toggle when the user resizes across the 1024px breakpoint, but stop
+  // listening once they've manually overridden — respect user intent.
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1024px)');
+    const onChange = (e) => setCollapsed(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const [lang, setLang]           = React.useState('zh');
+  const [org, setOrg]             = React.useState('');
+  const [projectId, setProjectId] = React.useState('');
+  const [source, setSource]       = React.useState('all');
+  const [dateRange, setDateRange] = React.useState('7d');
+  const [tweaks, setTweak]        = useTweaks(TWEAK_DEFAULTS);
+  const [textScale, setTextScale] = React.useState(1);
+
+  // Org list: [{orgId, orgName, projects:[{projectId,projectName}]}] from DB
+  const [orgList, setOrgList] = React.useState([]);
+  // Project map: [{projectId, projectName}] for the selected org
+  const [projectMap, setProjectMap] = React.useState([]);
+
+  // Fetch orgs whenever source changes; auto-select first org if only one exists
+  React.useEffect(() => {
+    setOrg('');
+    setProjectMap([]);
+    window.API.getOrgs(source)
+      .then(list => {
+        const orgs = (list || [])
+          .filter(o => o && o.orgId)
+          .map(o => ({ orgId: o.orgId, orgName: o.orgName || o.orgId, projects: o.projects || [] }));
+        setOrgList(orgs);
+        if (orgs.length === 1 && source === 'openai') setOrg(orgs[0].orgId);
+      })
+      .catch(() => {});
+  }, [source]);
+
+  // org state holds raw orgId
+  const selectedOrgId = React.useMemo(() => {
+    return orgList.some(x => x.orgId === org) ? org : '';
+  }, [org, orgList]);
+
+  // Update project list when org changes:
+  // OpenAI — extract from cached org data (no extra API call)
+  // Azure   — fetch from /v1/projects with orgId filter
+  React.useEffect(() => {
+    setProjectId('');
+    if (source !== 'azure') {
+      const selectedOrg = orgList.find(o => o.orgId === selectedOrgId);
+      setProjectMap((selectedOrg?.projects || []).map(p => ({
+        projectId: p.projectId,
+        projectName: p.projectName || '',
+      })));
+    } else {
+      window.API.getProjects(selectedOrgId, source)
+        .then(list => setProjectMap(list.map(p => ({
+          projectId: p.projectId,
+          projectName: p.projectName || '',
+        }))))
+        .catch(() => {});
+    }
+  }, [selectedOrgId, source, lang]);
+
+  React.useEffect(() => {
+    if (source === 'all') {
+      setOrg('');
+      setProjectId('');
+    }
+  }, [source, lang]);
+
+  // dateRange holds a backend period enum, not an i18n label, so it does not need
+  // to be re-translated when language changes (architecture principle ③).
+
+  // Apply theme
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  // Apply accent hue tweak
+  React.useEffect(() => {
+    const l = theme === 'dark' ? '0.65' : '0.55';
+    const sl = theme === 'dark' ? '0.2 0.06' : '0.97 0.03';
+    document.documentElement.style.setProperty('--accent', `oklch(${l} 0.18 ${tweaks.accentHue})`);
+    document.documentElement.style.setProperty('--accent-subtle', `oklch(${sl} ${tweaks.accentHue})`);
+  }, [tweaks.accentHue, theme]);
+
+  // Sync dark mode tweak
+  React.useEffect(() => {
+    setTheme(tweaks.darkMode ? 'dark' : 'light');
+  }, [tweaks.darkMode]);
+
+  // Apply global large-text scaling to all pages (not only Overview).
+  React.useEffect(() => {
+    document.body.style.zoom = String(textScale);
+    return () => {
+      document.body.style.zoom = '1';
+    };
+  }, [textScale]);
+
+  const tr = window.TRANSLATIONS[lang];
+
+  const pageContent = {
+    overview:   <OverviewPage onDrillDown={() => setPage('usage')} dateRange={dateRange} orgId={selectedOrgId} projectId={projectId} source={source} largeText={textScale > 1} />,
+    deprecated: <DeprecatedModelsPage orgId={selectedOrgId} projectId={projectId} projectMap={projectMap} source={source} dateRange={dateRange} />,
+    usage:      <UsagePage dateRange={dateRange} orgId={selectedOrgId} projectId={projectId} projectMap={projectMap} source={source} />,
+    cost:       <CostReportPage dateRange={dateRange} orgId={selectedOrgId} projectId={projectId} projectMap={projectMap} source={source} />,
+    azure:      <AzurePage dateRange={dateRange} orgId={selectedOrgId} projectId={projectId} source={source} />,
+    docs:       <DocsPage />,
+  };
+
+  return (
+    <window.LangContext.Provider value={lang}>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+
+        {/* Tweaks panel */}
+        <TweaksPanel>
+          <TweakSection title={tr.tweak_appearance}>
+            <TweakToggle id="darkMode"       label={tr.tweak_dark} />
+            <TweakSlider id="accentHue"      label={tr.tweak_hue} min={0} max={360} step={5} />
+          </TweakSection>
+          <TweakSection title={tr.tweak_layout}>
+            <TweakRadio  id="density"        label={tr.tweak_density} options={tr.tweak_density_opts} />
+            <TweakToggle id="showSparklines" label={tr.tweak_spark} />
+          </TweakSection>
+          <TweakSection title={tr.tweak_nav}>
+            {['overview','deprecated','usage','cost','azure','docs'].map(p => (
+              <TweakButton key={p} label={`→ ${tr['nav_'+p]}`} onClick={() => setPage(p)} />
+            ))}
+          </TweakSection>
+        </TweaksPanel>
+
+        <Sidebar currentPage={page} onNav={setPage} collapsed={collapsed} />
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Header
+            org={org} setOrg={setOrg} orgList={orgList}
+            projectId={projectId} setProjectId={setProjectId}
+            source={source} setSource={setSource}
+            dateRange={dateRange} setDateRange={setDateRange}
+            theme={theme} setTheme={setTheme}
+            onToggleSidebar={() => setCollapsed(c => !c)}
+            lang={lang} setLang={setLang}
+            projectOptions={projectMap.map(p => ({ value: p.projectId, label: p.projectName || '' }))}
+            textScale={textScale}
+            setTextScale={setTextScale}
+          />
+          <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+            {pageContent[page] || pageContent.overview}
+          </main>
+        </div>
+      </div>
+    </window.LangContext.Provider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body>
+</html>

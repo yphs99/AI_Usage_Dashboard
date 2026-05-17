@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "AI_Usage_Dashboard": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://0.0.0.0:56175;http://0.0.0.0:56176"
+    }
+  }
+}
+
